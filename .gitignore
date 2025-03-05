@@ -1,0 +1,35 @@
+# Java
+*.class
+*.jar
+*.war
+*.ear
+
+# Logs
+*.log
+
+# Spring Boot
+spring.log
+
+# VS Code
+.vscode/
+
+# Node.js
+node_modules/
+
+# Gradle
+.gradle/
+build/
+
+# Terraform
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfvars
+.terraform.lock.hcl
+
+# AWS
+.aws/
+
+# IDE
+.idea/
+*.iml
