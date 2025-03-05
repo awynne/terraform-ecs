@@ -1,0 +1,66 @@
+version: 0.2
+
+phases:
+  pre_build:
+    commands:
+      - echo Logging in to Amazon ECR...
+      - AWS_REGION=$(echo $AWS_REGION)
+      - aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin $(aws sts get-caller-identity --query Account --output text).dkr.ecr.$AWS_REGION.amazonaws.com
+      - COMMIT_HASH=$(echo $CODEBUILD_RESOLVED_SOURCE_VERSION | cut -c 1-7)
+      - IMAGE_TAG=${COMMIT_HASH:=latest}
+  build:
+    commands:
+      - echo Build started on `date`
+      - echo Current directory is $(pwd)
+      - ls -la
+      
+      # Check if backend directory exists
+      - if [ -d "backend" ]; then
+          echo Building backend image...;
+          cd backend;
+          docker build -t $BACKEND_ECR_REPOSITORY_URL:$IMAGE_TAG .;
+          docker tag $BACKEND_ECR_REPOSITORY_URL:$IMAGE_TAG $BACKEND_ECR_REPOSITORY_URL:latest;
+          cd ..;
+        else
+          echo "Backend directory not found, skipping backend build";
+        fi
+      
+      # Check if frontend directory exists  
+      - if [ -d "frontend" ]; then
+          echo Building frontend image...;
+          cd frontend;
+          docker build -t $FRONTEND_ECR_REPOSITORY_URL:$IMAGE_TAG .;
+          docker tag $FRONTEND_ECR_REPOSITORY_URL:$IMAGE_TAG $FRONTEND_ECR_REPOSITORY_URL:latest;
+          cd ..;
+        else
+          echo "Frontend directory not found, skipping frontend build";
+        fi
+      
+  post_build:
+    commands:
+      - echo Build completed on `date`
+      
+      # Push backend image
+      - if [ -d "backend" ]; then
+          echo Pushing backend image...;
+          docker push $BACKEND_ECR_REPOSITORY_URL:$IMAGE_TAG;
+          docker push $BACKEND_ECR_REPOSITORY_URL:latest;
+        fi
+      
+      # Push frontend image
+      - if [ -d "frontend" ]; then
+          echo Pushing frontend image...;
+          docker push $FRONTEND_ECR_REPOSITORY_URL:$IMAGE_TAG;
+          docker push $FRONTEND_ECR_REPOSITORY_URL:latest;
+        fi
+      
+      # Create artifacts for deployment
+      - echo Creating artifacts for deployment...
+      - echo '{"ImageURI":{"backend":"'$BACKEND_ECR_REPOSITORY_URL:$IMAGE_TAG'","frontend":"'$FRONTEND_ECR_REPOSITORY_URL:$IMAGE_TAG'"}}' > imageDefinitions.json
+      
+artifacts:
+  files:
+    - imageDefinitions.json
+    - appspec.yaml
+    - taskdef.json
+  discard-paths: yes
