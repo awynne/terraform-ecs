@@ -3,6 +3,30 @@ provider "aws" {
   region = "us-east-1"
 }
 
+# GitHub provider configuration
+provider "github" {
+  token = var.github_token
+  owner = var.github_owner
+}
+
+# Variables for GitHub webhook
+variable "github_token" {
+  description = "GitHub personal access token"
+  type        = string
+  sensitive   = true
+}
+
+variable "github_owner" {
+  description = "GitHub owner/organization name"
+  type        = string
+}
+
+variable "github_repository" {
+  description = "GitHub repository full name (owner/repo)"
+  type        = string
+  default     = "your-github-username/terraform-ecs"
+}
+
 # Get current AWS account ID
 data "aws_caller_identity" "current" {}
 
@@ -429,3 +453,41 @@ resource "aws_codepipeline" "main" {
     }
   }
 }
+
+# Create a random token for webhook security
+resource "random_string" "webhook_secret" {
+  length  = 32
+  special = false
+}
+
+# Create the webhook in AWS CodePipeline
+resource "aws_codepipeline_webhook" "github_webhook" {
+  name            = "github-webhook"
+  authentication  = "GITHUB_HMAC"
+  target_action   = "Source"
+  target_pipeline = aws_codepipeline.main.name
+
+  authentication_configuration {
+    secret_token = random_string.webhook_secret.result
+  }
+
+  filter {
+    json_path    = "$.ref"
+    match_equals = "refs/heads/main"
+  }
+}
+
+# Create the webhook in GitHub
+resource "github_repository_webhook" "codepipeline_webhook" {
+  repository = element(split("/", var.github_repository), 1)
+  
+  configuration {
+    url          = aws_codepipeline_webhook.github_webhook.url
+    content_type = "json"
+    insecure_ssl = false
+    secret       = random_string.webhook_secret.result
+  }
+
+  events = ["push"]
+}
+
