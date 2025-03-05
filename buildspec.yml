@@ -16,7 +16,7 @@ phases:
       
       # Check if backend directory exists
       - if [ -d "backend" ]; then
-          echo Building backend image...;
+          echo "Building backend image...";
           cd backend;
           docker build -t $BACKEND_ECR_REPOSITORY_URL:$IMAGE_TAG .;
           docker tag $BACKEND_ECR_REPOSITORY_URL:$IMAGE_TAG $BACKEND_ECR_REPOSITORY_URL:latest;
@@ -27,7 +27,7 @@ phases:
       
       # Check if frontend directory exists  
       - if [ -d "frontend" ]; then
-          echo Building frontend image...;
+          echo "Building frontend image...";
           cd frontend;
           docker build -t $FRONTEND_ECR_REPOSITORY_URL:$IMAGE_TAG .;
           docker tag $FRONTEND_ECR_REPOSITORY_URL:$IMAGE_TAG $FRONTEND_ECR_REPOSITORY_URL:latest;
